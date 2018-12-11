@@ -12,7 +12,7 @@ knitr::opts_chunk$set(echo = TRUE)
 This post tests several methods for handling missing data on a dataset of music listening history from Last.FM. I use data that capture show times each user has listened to some of my favorite metal bands to predict if they listen to my favorite band, Blind Guardian. I assess my model's performance, then randomly delete some of the data to see how well different methods recover the predictive power of the original model. 
 
 
-First, I read in the data and format it properly. 
+First, I read in the data and format it properly.  
 
 ```{r data, warning=F, message=F}
 setwd("C://Users/Brian/Desktop")
