@@ -1,0 +1,56 @@
+---
+title: "Project 3"
+author: "Brian Childers"
+date: "December 10, 2018"
+output: rmarkdown::github_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+For this project, I explore a new outlier detection method for time series anomaly detection. This method is from the R package Anomalous, which was written by Rob Hyndman to help detect unusual patterns of behavior for Yahoo email servers. I will explain the method as I perform the analysis on about 100 years of Knoxville Weather (Daily High degrees F) data. My aim is to detect unusual years in the data. This is different from typical outlier detection that would try to detect one observation that is anomalous; instead it attempts to identify features of time series themselves that make them different from other, similar series.
+
+First I read in the data and install the package
+```{r data}
+library(readr)
+Weather <- read_csv("C:/Users/Brian/Dropbox/MSBA/Zhou Data Mining/AA Blog posts/Weather.csv")
+Weather_cut <- Weather[c(1,2)]
+
+a <- do.call('data.frame', split(Weather_cut[1], Weather_cut$Year))
+colnames(a) <- c(1911:1933,1935:1938,1940:1946,1948:2017)
+
+devtools::install_github("robjhyndman/anomalous")
+library(anomalous)
+
+```
+
+Next, I compute a dataframe of features for each year in the data. These features are described in detail in his 2015 paper and the calculations are available in the source code on his GitHub. The features include lumpiness, entropy, autocorrelation, level shift, vertical change, change points, flat spots, trend, linearity, curvature, spikiness, Kullback-Leibler score, and the index of the max KL value. An example of this data is shown below. That dataframe is reduced to 2 principal components, plotted below. This allows for outlier detection on 2 dimensions. For cyclical data, 3 additional features can be calculated that add additional information, though this data is not cyclical so they are omitted.
+
+```{r TSmeasures}
+features <- tsmeasures(a)
+head(features)
+biplot.features(features)
+```
+
+Next the process uses a bivariate kernal density estimate as described in the paper to detect the 5 worst outliers from the rest of the series based on those 2 principal components. I then identify which years in the data are the worst outliers.
+
+```{r Outliers}
+outliers <- anomaly(features, n=5, robust=T, plot=T, labels=T)
+outliers$index
+years <- c(1911:1933,1935:1938,1940:1946,1948:2017)
+years[outliers$index]
+```
+
+Next, I plot some of the years that are most interesting from the data. First, I show an average year taken by the column means. 2001 was the most typical years, with 2010 the most atypical year, so I plotted them both. Additionally, 1985 is often remembered as one of the worst blizzards in area history, so it is interesting that it was not detected as an outlier. I plotted it as well to compare.
+```{r plots}
+Avg_year <- rowMeans(a)
+Plot_years <- data.frame(Avg_year, a$`2001`,a$`2010`, a$`1985`)
+matplot(Plot_years, type = c("l"),col = 1:4, main="Max Temperature per Day by Year")
+legend("topleft", legend = c("Average","2001 (typical)","2010 (atypical)","1985 (blizzard)"), col=1:4, pch=.1)
+```
+
+By looking at the plot, we see that the atypical year, 2010, had a very hot summer. A quick google search concluded that 2010 was among the hottest years on record. It also had a relatively cold winter. This could contribute to a more curved shape of the graph, adding to some of the calculated features and causing it to be an outlier. While I expected to see 1985 as an outlier, it was really only the cold few weeks that stood out, otherwise it was a normal year. 
+
+To conclude, this method can be very powerful in detecting subtle outleirs using features of the individual series. It is particularly useful for cyclical data, which unfortunately we do not have here. This is a useful application for detecting time series outliers that traditional outlier detecting does not deal with well.
